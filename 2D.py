@@ -12,13 +12,10 @@ from tkinter import *
 # initial position (w/2, h/2)
 
 def fit(pack, bin, dx, dy):
-    x = dx + pack[0]
-    y = dy + pack[1]
+    w = dx + pack[0]
+    h = dy + pack[1]
 
-    maxBinX = bin.x + bin.width
-    maxBinY = bin.y + bin.height
-
-    if( (x > maxBinX) or (y > maxBinY) ):
+    if( (w > bin.width) or (h > bin.height) ):
         return False
     return True
 
@@ -37,7 +34,7 @@ def splitBin(bin, pack):
         new_bins.append(new_bin)
 
     # Right bin
-    x = bin.x + pack.width
+    x = pack.x + pack.width
     y = bin.y
 
     w = bin.width - (pack.x + pack.width)
@@ -71,37 +68,44 @@ def splitBin(bin, pack):
 
     return new_bins
 
+def fitPack(pack, bins):
+    for bin in bins:
+        dx, dy = bin.width/2, bin.height/2
+
+        if fit(pack, bin, dx, dy):
+            x, y = dx + bin.x, dy + bin.y
+            w, h = pack[0], pack[1]
+
+            p = Rect(x, y, w, h)
+            bins.remove(bin)
+                
+            for new_bin in splitBin(bin, p):
+                bins.append(new_bin)
+            
+            print("no fitP len:", len(bins))
+            bins.sort(key=lambda x: x.width)
+
+            return  bins, p
+
+    # No space for this package!    
+    return bins, None
+            
 def solve(bins, packs):
-    packs.sort(key=lambda x: x[0])
+    packs.sort(key=lambda x: x[0], reverse=True)
 
     used_packs = []
-    
-    print("Bins len:", len(bins))
+    new_bins = bins
+
     for pack in packs:
-        print("* Bins len:", len(bins))
-        used = False
-        for bin in bins:
-            dx, dy = 0, 0
+        print("|||||||||||||||||||||||||||||")
+        for b in new_bins:
+            print(b.x, b.y, b.width, b.height)
+        new_bins, p = fitPack(pack, new_bins)
 
-            if not used and fit(pack, bin, dx, dy):
-                used = True
-                x, y = dx + bin.x, dy + bin.y
-                w, h = pack[0], pack[1]
+        if p != None:
+            used_packs.append(p)
 
-                p = Rect(x, y, w, h)
-                used_packs.append(p)
-
-                bins.remove(bin)
-                #packs.remove(pack)
-
-                for new_bin in splitBin(bin, p):
-                    bins.append(new_bin)
-                    print(new_bin.x, new_bin.y, new_bin.width, new_bin.height)
-                bins.sort(key=lambda x: x.width)
-                print("**Bins len:", len(bins))
-    
-    print("Bins len:", len(bins))
-    return [used_packs, bins]
+    return [used_packs, new_bins]
 
 
 class Rect():
@@ -111,29 +115,36 @@ class Rect():
         self.width = width
         self.height = height
 
+"""
+b = [ Rect(0, 0, 100, 100) ]
+p = (40, 50) # dx 20 dy 30
+new_bins, p = fitPack(p, b)
+
+for b in new_bins:
+    print(b.x, b.y, b.width, b.height)
+"""
+
 if __name__ == '__main__':
     w = 100
     h = 100
-    scale = 15
+    scale = 7
 
-    packs = [(i,i) for i in range(1, 50)]
+    packs = [(i,i) for i in range(1, 100)]
 
-    initial_bin = Rect(0, 0, 100, 100)
-    bins = []
-
-    bins.append(initial_bin)
-    
+    bins = [ Rect(0, 0, 100, 100) ]
     [used_packs, new_bins] = solve(bins, packs)
 
     master = Tk()    
     w = Canvas(master, width = scale*w, height = scale*h, bg = 'red')
 
     print("|||||||||||||||||||||||||||||")
-    for block in used_packs:
-        x, y, width, height = block.x, block.y, block.width, block.height
+    for pack in used_packs:
+        print(len(used_packs))
+        print(pack)
+        x, y, width, height = pack.x, pack.y, pack.width, pack.height
         w.create_rectangle(scale*x, scale*y, scale*x + scale*width, scale*y + scale*height, fill="blue") 
         w.create_text(scale* (x+width/2), scale*(y+height/2),text=str(width)+"x"+str(height)) 
         print(x,y,width,height)
   
     w.pack()
-    mainloop()  
+    mainloop() 
